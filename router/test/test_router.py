@@ -6,56 +6,39 @@ from router import Router
 
 
 class TestRouter(unittest.TestCase):
-    def test_dispatches_wsgi_request(self):
-        app = Mock()
-        router = Router()
-        router.add('/$')(app)
-        environ = dict(
-            PATH_INFO='/',
-        )
-        body_iter = router(environ, sentinel.start_response)
-        app.assert_called_once_with(environ, sentinel.start_response)
-        self.assertIs(body_iter, app.return_value)
+    def setUp(self):
+        self.router = Router()
+
+    def test_dispatches_to_correct_app(self):
+        self.router.add('/$')(sentinel.app)
+        self.assertIs(self.router.dispatch('/'), sentinel.app)
 
     def test_accepts_compiled_regexes(self):
-        app = Mock()
-        router = Router()
-        router.add(re.compile('/$'))(app)
-        environ = dict(
-            PATH_INFO='/',
-        )
-        body_iter = router(environ, sentinel.start_response)
-        app.assert_called_once_with(environ, sentinel.start_response)
-        self.assertIs(body_iter, app.return_value)
+        self.router.add(re.compile('/$'))(sentinel.app)
+        self.assertIs(self.router.dispatch('/'), sentinel.app)
 
     @patch('router.router.HTTPNotFound')
     def test_404_when_no_routes(self, notfound):
-        notfound.return_value = Mock()
-        router = Router()
-        environ = dict(
-            PATH_INFO='/foo',
-        )
-        body_iter = router(environ, sentinel.start_response)
+        self.assertIs(self.router.dispatch('/'), notfound.return_value)
         notfound.assert_called_once_with()
-        notfound.return_value.assert_called_once_with(
-            environ, sentinel.start_response)
-        self.assertIs(body_iter, notfound.return_value.return_value)
 
     @patch('router.router.HTTPNotFound')
     def test_404_when_no_match(self, notfound):
-        notfound.return_value = Mock()
-        app = Mock()
-        router = Router()
-        router.add('/$')(app)
-        environ = dict(
-            PATH_INFO='/foo',
-        )
-        body_iter = router(environ, sentinel.start_response)
-        self.assertFalse(app.called)
+        self.router.add('/$')(sentinel.app)
+        self.assertIs(self.router.dispatch('/foo'), notfound.return_value)
         notfound.assert_called_once_with()
-        notfound.return_value.assert_called_once_with(
-            environ, sentinel.start_response)
-        self.assertIs(body_iter, notfound.return_value.return_value)
+
+    def test_call_calls_dispatched_app(self):
+        environ = dict(
+            PATH_INFO='/',
+        )
+        with patch.object(
+            self.router, 'dispatch', mocksignature=True
+        ) as dispatch:
+            body_iter = self.router(environ, sentinel.start_response)
+            dispatch.assert_called_once_with(environ['PATH_INFO'])
+            dispatch.return_value.assert_called_once_with(
+                environ, sentinel.start_response)
 
     try:
         _ = unittest.TestCase.assertIs

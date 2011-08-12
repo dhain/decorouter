@@ -13,9 +13,12 @@ class Router(object):
             self.routes.append((regex, app))
         return add
 
-    def __call__(self, environ, start_response):
-        path = environ['PATH_INFO']
+    def dispatch(self, path_info):
         for regex, app in self.routes:
-            if regex.match(path):
-                return app(environ, start_response)
-        return HTTPNotFound()(environ, start_response)
+            if regex.match(path_info):
+                return app
+        return HTTPNotFound()
+
+    def __call__(self, environ, start_response):
+        app = self.dispatch(environ['PATH_INFO'])
+        return app(environ, start_response)
