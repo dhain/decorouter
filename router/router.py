@@ -8,6 +8,14 @@ _notall.add('_notall')
 class Router(object):
     def __init__(self):
         self.routes = []
+        self._cls = None
+
+    def __get__(self, obj, cls):
+        bound = Router()
+        bound.routes = self.routes
+        bound._obj = obj
+        bound._cls = cls
+        return bound
 
     def add(self, regex, *methods):
         if not isinstance(regex, re._pattern_type):
@@ -16,6 +24,7 @@ class Router(object):
             methods = ('GET', 'HEAD')
         def add(app):
             self.routes.append((regex, methods, app))
+            return app
         return add
 
     def _update_environ(self, environ, m):
@@ -50,6 +59,8 @@ class Router(object):
                     allowed_methods.extend(methods)
                     continue
                 self._update_environ(environ, m)
+                if self._cls:
+                    app = app.__get__(self._obj, self._cls)
                 return app
         if allowed_methods:
             return self._handle_methods(allowed_methods, method)

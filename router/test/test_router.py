@@ -14,6 +14,9 @@ class TestRouter(unittest.TestCase):
             REQUEST_METHOD='GET',
         )
 
+    def test_add_returns_added_app(self):
+        self.assertIs(self.router.add('')(sentinel.app), sentinel.app)
+
     def test_dispatches_to_correct_app(self):
         self.router.add('/bar/baz$')(sentinel.app)
         self.assertIs(self.router.dispatch(self.environ), sentinel.app)
@@ -106,6 +109,17 @@ class TestRouter(unittest.TestCase):
             detail=methods,
             headers=[('Allow', methods)],
         )
+
+    def test_binds_methods(self):
+        class MyClass:
+            router = self.router
+            @router.add('/bar/baz$')
+            def baz(self):
+                pass
+        instance = MyClass()
+        app = instance.router.dispatch(self.environ)
+        self.assertIs(app.im_self, instance)
+        self.assertIs(app.im_func, MyClass.baz.im_func)
 
     try:
         _ = unittest.TestCase.assertIs
