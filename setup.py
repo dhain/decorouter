@@ -3,12 +3,12 @@ from setuptools import setup, find_packages
 version = '0.0.1'
 
 setup(
-    name='router',
+    name='decorouter',
     version=version,
-    description=('A WSGI routing middleware.'),
+    description=('A WSGI routing apparatus.'),
     author='David Zuwenden',
     author_email='dhain@zognot.org',
-    url='http://zognot.org/',
+    url='https://github.com/dhain/decorouter',
     license='MIT',
     classifiers=[
         "Intended Audience :: Developers",
@@ -18,6 +18,6 @@ setup(
     ],
     packages=find_packages(),
     requires=['webob'],
-    test_suite='router.test',
+    test_suite='decorouter.test',
     tests_require=['mock'],
 )

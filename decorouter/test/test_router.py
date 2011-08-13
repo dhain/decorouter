@@ -2,7 +2,7 @@ import re
 import unittest
 from mock import Mock, sentinel, patch
 
-from router import Router
+from decorouter import Router
 
 
 class TestRouter(unittest.TestCase):
@@ -25,13 +25,13 @@ class TestRouter(unittest.TestCase):
         self.router.add(re.compile('/bar/baz$'))(sentinel.app)
         self.assertIs(self.router.dispatch(self.environ), sentinel.app)
 
-    @patch('router.router.HTTPNotFound')
+    @patch('decorouter.router.HTTPNotFound')
     def test_404_when_no_routes(self, notfound):
         self.assertIs(
             self.router.dispatch(self.environ), notfound.return_value)
         notfound.assert_called_once_with()
 
-    @patch('router.router.HTTPNotFound')
+    @patch('decorouter.router.HTTPNotFound')
     def test_404_when_no_match(self, notfound):
         self.router.add('/bar/quux$')(sentinel.app)
         self.assertIs(
@@ -74,7 +74,7 @@ class TestRouter(unittest.TestCase):
             )
         )
 
-    @patch('router.router.HTTPMethodNotAllowed')
+    @patch('decorouter.router.HTTPMethodNotAllowed')
     def test_method_not_allowed(self, notallowed):
         self.router.add('/bar/baz$', 'POST')(sentinel.app)
         self.assertIs(
@@ -82,13 +82,13 @@ class TestRouter(unittest.TestCase):
         notallowed.assert_called_once_with(
             headers=[('Allow', 'POST')])
 
-    @patch('router.router.HTTPMethodNotAllowed')
+    @patch('decorouter.router.HTTPMethodNotAllowed')
     def test_method_allowed_by_later_match(self, notallowed):
         self.router.add('/bar/baz$', 'POST')(sentinel.post_app)
         self.router.add('/bar/baz$')(sentinel.app)
         self.assertIs(self.router.dispatch(self.environ), sentinel.app)
 
-    @patch('router.router.HTTPMethodNotAllowed')
+    @patch('decorouter.router.HTTPMethodNotAllowed')
     def test_method_not_allowed_multiple_matches(self, notallowed):
         self.router.add('/bar/baz$', 'POST', 'UPDATE')(sentinel.post_app)
         self.router.add('/bar/baz$', 'DELETE')(sentinel.delete_app)
@@ -97,7 +97,7 @@ class TestRouter(unittest.TestCase):
         notallowed.assert_called_once_with(
             headers=[('Allow', 'POST, UPDATE, DELETE')])
 
-    @patch('router.router.HTTPOk')
+    @patch('decorouter.router.HTTPOk')
     def test_options(self, ok):
         self.router.add('/bar/baz$', 'POST', 'UPDATE')(sentinel.post_app)
         self.router.add('/bar/baz$', 'DELETE')(sentinel.delete_app)
