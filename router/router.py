@@ -1,6 +1,9 @@
 import re
 from webob.exc import HTTPOk, HTTPMethodNotAllowed, HTTPNotFound
 
+_notall = set(locals())
+_notall.add('_notall')
+
 
 class Router(object):
     def __init__(self):
@@ -35,3 +38,7 @@ class Router(object):
     def __call__(self, environ, start_response):
         app = self.dispatch(environ)
         return app(environ, start_response)
+
+
+__all__ = sorted(set(locals()) - _notall)
+del _notall
