@@ -13,12 +13,25 @@ class Router(object):
             self.routes.append((regex, app))
         return add
 
-    def dispatch(self, path_info):
+    def _update_environ(self, environ, m):
+        environ['SCRIPT_NAME'] += m.group(0)
+        environ['PATH_INFO'] = environ['PATH_INFO'][m.end():]
+        old_args, old_kws = environ.get(
+            'wsgiorg.routing_args', ((), {}))
+        environ['wsgiorg.routing_args'] = (
+            tuple(old_args) + m.groups(),
+            dict(old_kws, **m.groupdict())
+        )
+
+    def dispatch(self, environ):
+        path_info = environ['PATH_INFO']
         for regex, app in self.routes:
-            if regex.match(path_info):
+            m = regex.match(path_info)
+            if m:
+                self._update_environ(environ, m)
                 return app
         return HTTPNotFound()
 
     def __call__(self, environ, start_response):
-        app = self.dispatch(environ['PATH_INFO'])
+        app = self.dispatch(environ)
         return app(environ, start_response)
