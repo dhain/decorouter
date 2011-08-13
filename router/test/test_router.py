@@ -11,6 +11,7 @@ class TestRouter(unittest.TestCase):
         self.environ = dict(
             SCRIPT_NAME='/foo',
             PATH_INFO='/bar/baz',
+            REQUEST_METHOD='GET',
         )
 
     def test_dispatches_to_correct_app(self):
@@ -70,12 +71,48 @@ class TestRouter(unittest.TestCase):
             )
         )
 
+    @patch('router.router.HTTPMethodNotAllowed')
+    def test_method_not_allowed(self, notallowed):
+        self.router.add('/bar/baz$', 'POST')(sentinel.app)
+        self.assertIs(
+            self.router.dispatch(self.environ), notallowed.return_value)
+        notallowed.assert_called_once_with(
+            headers=[('Allow', 'POST')])
+
+    @patch('router.router.HTTPMethodNotAllowed')
+    def test_method_allowed_by_later_match(self, notallowed):
+        self.router.add('/bar/baz$', 'POST')(sentinel.post_app)
+        self.router.add('/bar/baz$')(sentinel.app)
+        self.assertIs(self.router.dispatch(self.environ), sentinel.app)
+
+    @patch('router.router.HTTPMethodNotAllowed')
+    def test_method_not_allowed_multiple_matches(self, notallowed):
+        self.router.add('/bar/baz$', 'POST', 'UPDATE')(sentinel.post_app)
+        self.router.add('/bar/baz$', 'DELETE')(sentinel.delete_app)
+        self.assertIs(
+            self.router.dispatch(self.environ), notallowed.return_value)
+        notallowed.assert_called_once_with(
+            headers=[('Allow', 'POST, UPDATE, DELETE')])
+
+    @patch('router.router.HTTPOk')
+    def test_options(self, ok):
+        self.router.add('/bar/baz$', 'POST', 'UPDATE')(sentinel.post_app)
+        self.router.add('/bar/baz$', 'DELETE')(sentinel.delete_app)
+        self.environ['REQUEST_METHOD'] = 'OPTIONS'
+        self.assertIs(self.router.dispatch(self.environ), ok.return_value)
+        methods = 'POST, UPDATE, DELETE'
+        ok.assert_called_once_with(
+            explanation='The requested resource supports ',
+            detail=methods,
+            headers=[('Allow', methods)],
+        )
+
     try:
         _ = unittest.TestCase.assertIs
         del _
     except AttributeError:
         def assertIs(self, obj1, obj2):
-            return self.assertTrue(obj1 is obj2)
+            return self.assertTrue(obj1 is obj2, '%r is not %r' % (obj1, obj2))
 
 if __name__ == '__main__':
     unittest.main()

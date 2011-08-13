@@ -9,11 +9,13 @@ class Router(object):
     def __init__(self):
         self.routes = []
 
-    def add(self, regex):
+    def add(self, regex, *methods):
         if not isinstance(regex, re._pattern_type):
             regex = re.compile(regex)
+        if not methods:
+            methods = ('GET', 'HEAD')
         def add(app):
-            self.routes.append((regex, app))
+            self.routes.append((regex, methods, app))
         return add
 
     def _update_environ(self, environ, m):
@@ -26,13 +28,31 @@ class Router(object):
             dict(old_kws, **m.groupdict())
         )
 
+    def _handle_methods(self, allowed_methods, method):
+        allowed_methods = ', '.join(allowed_methods)
+        headers = [('Allow', allowed_methods)]
+        if method == 'OPTIONS':
+            return HTTPOk(
+                explanation='The requested resource supports ',
+                detail=allowed_methods,
+                headers=headers,
+            )
+        return HTTPMethodNotAllowed(headers=headers)
+
     def dispatch(self, environ):
         path_info = environ['PATH_INFO']
-        for regex, app in self.routes:
+        method = environ['REQUEST_METHOD']
+        allowed_methods = []
+        for regex, methods, app in self.routes:
             m = regex.match(path_info)
             if m:
+                if method not in methods:
+                    allowed_methods.extend(methods)
+                    continue
                 self._update_environ(environ, m)
                 return app
+        if allowed_methods:
+            return self._handle_methods(allowed_methods, method)
         return HTTPNotFound()
 
     def __call__(self, environ, start_response):
